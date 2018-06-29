@@ -28,7 +28,7 @@ class Controller
     /**
      * @var bool
      */
-    protected $tryLoadModule = true;
+    protected $tryLoadModule = false;
 
     /**
      * @param HttpRequest $request
@@ -93,6 +93,9 @@ class Controller
 
     private function showAdmin404()
     {
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        global $APPLICATION, $USER;
+
         /** @noinspection PhpIncludeInspection */
         include $_SERVER['DOCUMENT_ROOT'] . BX_ROOT . '/admin/404.php';
     }
@@ -106,12 +109,17 @@ class Controller
      */
     private function getAdminInterfaceClassName(string $module, string $view, string $entity): string
     {
-        //TODO Описать алгоритм формирования имени класса понятным человеческим языком
-
         // Собираем имя класса админского интерфейса
         $moduleNameParts = explode('.', $module);
         $entityNameParts = explode('_', $entity);
         $interfaceNameParts = array_merge($moduleNameParts, $entityNameParts);
+        //Фильтруем пустые вхождения, чтобы не получить namespace с задвоенными backslash.
+        $interfaceNameParts = array_filter(
+            $interfaceNameParts,
+            function ($string) {
+                return trim($string) != '';
+            }
+        );
         $interfaceNameClass = '';
         $viewParts = explode('_', $view);
 
@@ -120,17 +128,14 @@ class Controller
             $interfaceName = implode('', array_map('ucfirst', $viewParts));
             $parts = $interfaceNameParts;
             $parts[] = $interfaceName . self::ADMIN_INTERFACE_CLASS_SUFFIX;
-            $class = array_map('ucfirst', $parts);
-            $interfaceNameClass = implode('\\', $class);
-
+            $interfaceNameClass = implode('\\', $parts);
             if (class_exists($interfaceNameClass)) {
                 break;
             } else {
                 $className = array_pop($parts);
                 $parts[] = self::ADMIN_INTERFACE_CLASS_SUFFIX;
                 $parts[] = $className;
-                $class = array_map('ucfirst', $parts);
-                $interfaceNameClass = implode('\\', $class);
+                $interfaceNameClass = implode('\\', $parts);
                 if (class_exists($interfaceNameClass)) {
                     break;
                 }
@@ -150,7 +155,10 @@ class Controller
      */
     public static function createHelper(string $helperClassName, array $interfaceParams, bool $isPopup): AdminBaseHelper
     {
-        global $by, $order;
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        global $by, $order, $APPLICATION, $USER, $adminPage, $adminMenu, $adminChain;
+
+        require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php';
 
         $fields = [];
         if (isset($interfaceParams['FIELDS']) && is_array($interfaceParams['FIELDS'])) {
@@ -191,7 +199,7 @@ class Controller
             return true;
         }
 
-        return Loader::includeModule($module);
+        return Loader::includeModule(mb_strtolower($module));
     }
 
     /**
@@ -220,10 +228,13 @@ class Controller
      */
     protected function doShow(AdminBaseHelper $helper, bool $isPopup)
     {
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        global $by, $order, $APPLICATION, $USER, $adminPage, $adminMenu, $adminChain;
+
         if ($isPopup) {
-            require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_popup_admin.php");
+            require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_popup_admin.php');
         } else {
-            require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_admin_after.php");
+            require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php');
         }
 
         if ($helper instanceof AdminListHelper) {
@@ -234,9 +245,10 @@ class Controller
         $helper->show();
 
         if ($isPopup) {
-            require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_popup_admin.php");
+            require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_popup_admin.php');
         } else {
-            require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_admin.php");
+            require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php');
         }
     }
+
 }
