@@ -8,7 +8,7 @@
 1 Установить через composer
 
 ```
-composer install webarchitect609/bitrix-admin-helper-controller
+composer require webarchitect609/bitrix-admin-helper-controller
 ```
 
 При этом в `bitrix/modules` будет установлен пакет digitalwand/digitalwand.admin_helper . Если требуется, чтобы он был 
@@ -29,12 +29,16 @@ composer install webarchitect609/bitrix-admin-helper-controller
 
 ```
 [
-    'CONDITION' => '#^/bitrix/admin/admin_helper_controller/#',
+    'CONDITION' => '#^/bitrix/admin/admin_helper_controller.php#',
     'RULE'      => '',
     'ID'        => '',
     'PATH'      => '/admin-helper-controller.php',
 ],
 ```
+
+В пути в `CONDITION` не используйте уровень ниже, чем `/bitrix/admin`, т.к. после добавления в меню и перехода по такому 
+url все остальные ссылки станут неработоспособными.  
+
 
 3 Первые два уровня в namespace генерируются на основании имени модуля, в котором vendor и package разделяются точкой. 
 Значит обязательно требуется, чтобы все классы хелперов и визуального интерфейса были определены на третьем и более 
@@ -59,7 +63,7 @@ class BarTaskEditHelper extends AdminEditHelper
 
     public static $module = 'Foo.Bar';
 
-    protected static $routerUrl = '/bitrix/admin/admin_helper_controller/';
+    protected static $routerUrl = '/bitrix/admin/admin_helper_controller.php';
 
 }
 ```
@@ -88,3 +92,28 @@ class BarTaskEditHelper extends AdminEditHelper
 Все описанные ограничения и неудобные правила, которые следует выполнять, вызваны тем, что пакет 
 `digitalwand/digitalwand.admin_helper` написан в том же стиле ложного ООП, что и сам Битрикс, хотя решает очень насущную 
 задачу.  
+
+8 Добавить в мено, зарегистрировав обработчик события `main:OnBuildGlobalMenu` и получив URL от хелпера для списка.  
+
+```
+\Bitrix\Main\EventManager::getInstance()->addEventHandler(
+        'main',
+        'OnBuildGlobalMenu',
+        function (&$adminMenu, &$moduleMenu) {
+            $moduleMenu[] = [
+                'parent_menu' => 'global_menu_store',
+                'section'     => 'Bar task list',
+                'sort'        => 610,
+                'url'         => Foo\Bar\AdminInterface\BarTaskListHelper::getUrl(),
+                'text'        => 'Bar task list',
+                'title'       => 'Create and view bar tasks',
+                'icon'        => 'sale_menu_icon_statistic',
+                'page_icon'   => 'sale_page_icon_statistic',
+                'item_id'     => 'my-bar-task-list',
+                'items'       => [],
+            ];
+        }
+);
+```
+ 
+
