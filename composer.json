@@ -27,5 +27,6 @@
   },
   "suggest": {
     "webarchitect609/bitrix-neverinclude": "For Bitrix modules autoloading (see docs for known restrictions!)"
-  }
+  },
+  "abandoned": true
 }
